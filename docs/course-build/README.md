@@ -1,6 +1,6 @@
-# 从 0 实现 Pi Agent Harness（30 节实战）
+# 从 0 实现 Pi Agent Harness（30 + 8 节实战）
 
-> 在这门课里，我们**不依赖 pi 的任何包**，用原生 TypeScript + `fetch` 从第一行代码造一个能用的 mini agent harness，借鉴 pi 的架构但全部自己实现。最终产物 `mini-pi/` 是一个能跑的 coding agent CLI。lesson-22~26 进阶篇对照 kimi-code 与 pi 的差异，补齐持久化、权限、计划模式等产品级能力；lesson-27~30 进阶 II 补齐并发安全、context 工程和 goal 自主性。
+> 在这门课里，我们**不依赖 pi 的任何包**，用原生 TypeScript + `fetch` 从第一行代码造一个能用的 mini agent harness，借鉴 pi 的架构但全部自己实现。最终产物 `mini-pi/` 是一个能跑的 coding agent CLI。lesson-22~26 进阶篇对照 kimi-code 与 pi 的差异，补齐持久化、权限、计划模式等产品级能力；lesson-27~30 进阶 II 补齐并发安全、context 工程和 goal 自主性。**lesson-31~38 阶段 9（云化篇）把 mini-pi 从本地 CLI 改造成多用户云 agent 服务**：HTTP server、SSE 流式、Session API、JWT 认证、per-user 隔离、WebSocket 实时、Redis pub/sub 水平扩展、Dockerfile 部署，全程尽量零依赖（JWT / WebSocket 手写，仅 Redis 客户端破例引入），每节对照 kimi-code `kap-server` 的设计决策。
 
 ## 这门课和上一门的区别
 
@@ -15,10 +15,11 @@
 ## 技术栈
 
 - **语言**：TypeScript（Node 22+，ESM）
-- **依赖**：零运行时依赖。只用：
+- **依赖**：尽量零运行时依赖（阶段 1-8 严格零依赖）。阶段 9 破例引入 `ioredis`（Redis pub/sub），其余能力（HTTP / SSE / JWT / WebSocket）均用 Node 内置模块手写。只用：
   - 全局 `fetch`（Node 18+ 内置）调 OpenAI 兼容 API
-  - `node:fs` / `node:child_process` / `node:readline` 等内置模块
+  - `node:http` / `node:crypto` / `node:fs` / `node:child_process` / `node:readline` 等内置模块
   - 开发期：`typescript` + `tsx`（跑 TS 脚本）
+  - 阶段 9 运行期：`ioredis`（唯一破例）
 - **LLM**：任何 OpenAI 兼容的 `/v1/chat/completions` 端点（OpenAI、DeepSeek、Moonshot、本地 ollama、vLLM……）
 
 ## mini-pi 最终架构
@@ -56,6 +57,19 @@ mini-pi/
 │   │   └── templates.ts      #   prompt 模板 + 参数替换
 │   ├── extensions/           # 阶段 6：扩展系统
 │   │   └── loader.ts         #   动态 import + 钩子注册
+│   ├── server/              # 阶段 9：云服务化
+│   │   ├── app.ts           #   HTTP server 主体（node:http）
+│   │   ├── main.ts          #   server 入口（读 env）
+│   │   ├── session-store.ts #   Agent 实例池 + per-user 路径
+│   │   ├── user-store.ts    #   用户管理 + PBKDF2 哈希
+│   │   ├── jwt.ts           #   手写 JWT（HS256 + timingSafeEqual）
+│   │   ├── auth.ts          #   认证中间件（Bearer + withAuth）
+│   │   ├── ws.ts            #   手写 WebSocket 协议（握手 + 帧解析）
+│   │   ├── broadcaster.ts   #   进程内事件广播
+│   │   └── redis-broadcaster.ts # 跨节点事件扇出（Redis pub/sub）
+│   ├── Dockerfile           # 阶段 9：多阶段容器化
+│   ├── docker-compose.yml   #   server × 2 + redis + nginx
+│   ├── nginx.conf           #   sticky session + WS upgrade + TLS
 │   └── cli.ts                # 毕业课：CLI 入口 + 交互式 REPL
 └── examples/                 # 每节课的演示脚本
 ```
@@ -171,6 +185,20 @@ cd mini-pi
 | 29 | [Permission prompt 三态](./lesson-29.md) | `permission-rules.ts`（allow/prompt/deny + readline 确认） | 升级 L24 的二态 |
 | 30 | [Goal 模式](./lesson-30.md) | `goal/`（GoalManager + 4 工具 + 预算追踪） | 新模块 |
 
+### 阶段 9（进阶 III）：从 CLI 到多用户云服务 —— 第 31-38 节 ★★
+> 把前 30 节攒下的解耦设计变现：不改动 agent / session / tools 业务代码，仅新增 `server/` 层，把 mini-pi 从本地 CLI 改造成多用户云 agent 服务。全程尽量零依赖（JWT / WebSocket 手写，仅 Redis 客户端破例引入），每节对照 kimi-code `kap-server` 的设计决策。
+
+| # | 主题 | 产出 | 对照 kimi-code |
+|---|------|------|----------------|
+| 31 | [HTTP server 基础](./lesson-31.md) | `server/app.ts`（node:http 包裹 Agent） | `kap-server/src/start.ts`（Fastify） |
+| 32 | [SSE 流式推送](./lesson-32.md) | `POST /stream`（event→SSE 帧） | `registerApiV1Routes` 的 `/messages` |
+| 33 | [Session REST API](./lesson-33.md) | `POST /sessions` + 实例池 | `SessionLifecycleService` |
+| 34 | [用户模型 + JWT](./lesson-34.md) | 手写 JWT（HS256 + PBKDF2） | `kap-server` 单 bearer（无用户） |
+| 35 | [per-user 隔离](./lesson-35.md) | per-user 目录 + 越权校验 | `kap-server` 无（共享 homeDir） |
+| 36 | [WebSocket 实时](./lesson-36.md) | 手写 RFC 6455 帧解析 | `kap-server` 用 `ws` 库 |
+| 37 | [Redis pub/sub](./lesson-37.md) | 跨节点事件扇出（破例引 ioredis） | `kap-server` 无水平扩展 |
+| 38 | [Dockerfile + 部署](./lesson-38.md) | 多阶段镜像 + nginx + compose | `kap-server` 仅 e2e 测试 Dockerfile |
+
 ## 节奏建议
 
 - 阶段 1-3 是主轴（LLM + tool + loop），**必须按顺序**，是 harness 的心脏
@@ -178,6 +206,7 @@ cd mini-pi
 - 阶段 5-6 是「从 demo 到产品」的关键
 - 阶段 7（进阶）把前 21 节预留的死代码全部接通，并对照 kimi-code 补齐 permission / ask_user / todo / plan-mode。建议在跑通 lesson-21 后连着做，因为它们互相依赖（23 依赖 22，26 依赖 24/25）
 - 阶段 8（进阶 II）补齐并发安全（L27 mutation queue）、context 工程（L28 skill 触发）、权限精细化（L29 prompt 三态）、自主性（L30 goal）。互相独立，可挑感兴趣的读
+- 阶段 9（云化）把 mini-pi 从 CLI 变成多用户云服务。**必须按顺序**（31→38 依赖链清晰），建议跑通 lesson-21 后开始。这阶段不改动前 30 节的业务代码，只新增 `server/` 层——是分层架构红利的集中兑现
 - 每节 1-2 小时，阶段 3 的核心课可能更久（值得）
 
 ## 约定

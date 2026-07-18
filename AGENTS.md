@@ -55,10 +55,15 @@ quick-pi/
 │   ├── pnpm-workspace.yaml # workspace + catalog（如 zod 4.3.6）
 │   └── AGENTS.md           # ★ Kimi Code 权威开发规则（CLAUDE.md 是其符号链接）
 │
-├── mini-pi/                # 教学用最小化 agent harness（零运行时依赖）
+├── mini-pi/                # 教学用最小化 agent harness（尽量零运行时依赖）
 │   ├── src/                # 见下文「mini-pi 架构」
+│   │   ├── llm/ tools/ agent/ session/ prompt/ extensions/ goal/
+│   │   └── server/         # 阶段 9 新增：云服务化（app/main/session-store/jwt/auth/ws/broadcaster/redis）
+│   ├── Dockerfile          # 阶段 9：多阶段容器化
+│   ├── docker-compose.yml  # server × 2 + redis + nginx
+│   ├── nginx.conf          # sticky session + WS upgrade + TLS
 │   ├── examples/           # lesson-01 ~ lesson-30 渐进式示例脚本
-│   ├── package.json        # bin: mini-pi → dist/cli.js
+│   ├── package.json        # bin: mini-pi → dist/cli.js + mini-pi-server → dist/server/main.js
 │   └── tsconfig.json
 │
 ├── docs/                   # 学习材料 + 实战课程
@@ -178,7 +183,7 @@ orchestrator 与上面三者并列，它 spawn coding-agent 的 rpc 模式来驱
 
 ## `mini-pi/` 架构概览（教学）
 
-`mini-pi/` 是「实战课程 B」（`docs/course-build/`）的最终产物：**零运行时依赖**（只用全局 `fetch` + Node 内置模块），借鉴 Pi 架构但全部自己实现，最终是一个能用的 coding agent CLI。
+`mini-pi/` 是「实战课程 B」（`docs/course-build/`）的最终产物：前 30 节产出**零运行时依赖**（只用全局 `fetch` + Node 内置模块）的 coding agent CLI；阶段 9（lesson-31~38）把它改造成**多用户云 agent 服务**（仅 `ioredis` 破例引入）。借鉴 Pi 架构但全部自己实现。
 
 ### 模块职责
 
@@ -192,6 +197,7 @@ orchestrator 与上面三者并列，它 spawn coding-agent 的 rpc 模式来驱
 | `src/extensions/` | `runner.ts` 实现 `ExtensionAPI`；`permission.ts`/`permission-rules.ts` 实现权限模式；`plan-mode.ts` 实现 plan 模式。 |
 | `src/goal/` | goal 自主执行模式（`goal.ts` + `tools.ts`），对标 kimi-code 的 goal mode。 |
 | `src/cli.ts` | CLI 入口（readline 交互）。 |
+| `src/server/` | **阶段 9 新增：云服务化**。`app.ts`/`main.ts` 是 HTTP server 主体（node:http）；`session-store.ts` 是 Agent 实例池（per-user 路径 + 越权校验）；`user-store.ts` + `jwt.ts` + `auth.ts` 实现用户管理 + 手写 JWT（HS256）+ PBKDF2 密码哈希；`ws.ts` 手写 WebSocket 协议（RFC 6455 握手 + 帧解析）；`broadcaster.ts`/`redis-broadcaster.ts` 实现进程内 + 跨节点事件广播。对照 kimi-code `kap-server`。 |
 
 ### 数据流
 
@@ -218,6 +224,10 @@ cli.ts main()
 | `OPENAI_BASE_URL` | API 端点（默认 `https://api.openai.com/v1`）|
 | `OPENAI_MODEL` | 模型名（默认 `gpt-4o-mini`）|
 | `MINI_PI_EXTENSIONS` | 逗号分隔的扩展路径列表 |
+| `MINI_PI_PORT` | server 端口（阶段 9，默认 3000）|
+| `MINI_PI_HOST` | server 绑定地址（默认 `127.0.0.1`）|
+| `MINI_PI_DATA_DIR` | server 数据目录（session/users/jwt-secret，默认 `<cwd>/.mini-pi`）|
+| `REDIS_URL` | Redis 连接（可选；设置后启用跨节点事件扇出，如 `redis://127.0.0.1:6379`）|
 
 ---
 
@@ -226,7 +236,7 @@ cli.ts main()
 | 目录 | 定位 | 依赖 | 产出 |
 |------|------|------|------|
 | `docs/course/` | **实战课程 A：读 Pi 源码**。18 节基础 + 19-25 节进阶（对照 Kimi Code）。每节有目标/知识准备(带`文件:行号`)/代码实战/自检。 | `@earendil-works/*` 包 + pi 的 `faux` provider（多数课不需 API key） | 跑通 pi 的示例脚本（`docs/course/examples/`） |
-| `docs/course-build/` | **实战课程 B：从 0 实现 mini-pi**。30 节，零依赖。lesson-22~26 对照 kimi-code 与 pi 补齐持久化/权限/计划模式；lesson-27~30 补齐并发安全/context 工程/goal 自主性。 | 零运行时依赖（仅 `fetch` + Node 内置） | 完整的 `mini-pi/` 项目 |
+| `docs/course-build/` | **实战课程 B：从 0 实现 mini-pi**。30 节 + **阶段 9（云化）8 节共 38 节**。阶段 1-8 零依赖；阶段 9 把 mini-pi 从本地 CLI 改造成多用户云 agent 服务（HTTP / SSE / JWT / per-user 隔离 / WebSocket / Redis pub/sub / Dockerfile 部署），仅 `ioredis` 破例引入，其余能力（JWT / WebSocket 协议）均用 Node 内置模块手写。每节对照 kimi-code `kap-server` 的设计决策。 | 前 30 节零运行时依赖（仅 `fetch` + Node 内置）；阶段 9 引入 `ioredis`（唯一破例） | 完整的 `mini-pi/` 项目（含 CLI + 云 server 两种入口） |
 | `docs/README.md` + `learning-roadmap.md` + `code-index.md` | 心智模型、4 阶段路线图、按主题的代码索引（精确到文件:行号） | — | — |
 
 两门课程都用中文撰写。课程脚本一律从对应子项目目录运行（详见各课程 README）。
@@ -278,10 +288,12 @@ pnpm publish                   # 完整发布门禁：typecheck+lint+sherif+test
 
 ```bash
 cd mini-pi
-npm install
-npm start                      # tsx 运行 src/cli.ts（需先设 OPENAI_API_KEY）
-npm run check                  # tsc --noEmit
-npm run build                  # tsc 编译到 dist/
+npm install                  # 阶段 9 引入 ioredis（唯一运行时依赖）
+npm start                    # tsx 运行 src/cli.ts（CLI 模式，需先设 OPENAI_API_KEY）
+npx tsx src/server/main.ts   # 阶段 9：起 HTTP server（需先设 OPENAI_API_KEY）
+npm run check                # tsc --noEmit
+npm run build                # tsc 编译到 dist/（产物：dist/cli.js + dist/server/main.js）
+docker compose up -d         # 阶段 9：一键拉起 server × 2 + redis + nginx
 ```
 
 ---
