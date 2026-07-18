@@ -85,3 +85,19 @@ cd pi
 - 代码块顶部会写「创建 `examples/lesson-XX/xxx.ts`」或「编辑 `xxx.ts`」
 - 「预期输出」是真实运行应看到的样子（用 faux 时是确定性的）
 - 行号基于 v0.80.x，会漂移 —— 找代码以函数名/类型名为准
+
+---
+
+## 课程续写计划
+
+18 节之后，我们继续以 [Kimi Code](https://github.com/MoonshotAI/kimi-code) 为参照，探索“从 Pi harness 到产品”的进阶主题：
+
+- 第 19 节：架构横评 —— Pi vs Kimi Code
+- 第 20 节：Vendor 并魔改 pi-tui
+- 第 21 节：生命周期钩子 —— 审计与通知
+- 第 22 节：权限模式 —— yolo / manual / auto
+- 第 23 节：插件市场与 MCP 配置
+- 第 24 节：内置 Sub-agent 调度
+- 第 25 节：毕业项目 —— 打造一个 Kimi-Code-lite
+
+详见 [lesson-plan-19-25.md](./lesson-plan-19-25.md)。

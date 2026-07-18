@@ -1,0 +1,12 @@
+{
+	"version": "1",
+	"plugins": [
+		{
+			"id": "demo-data-source",
+			"displayName": "Demo Data Source",
+			"description": "一个最小示例 plugin，展示 marketplace skill 加载机制。",
+			"keywords": ["demo", "data"],
+			"source": "./plugins/demo-data-source"
+		}
+	]
+}

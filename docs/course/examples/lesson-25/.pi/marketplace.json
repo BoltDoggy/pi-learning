@@ -1,0 +1,11 @@
+{
+	"version": "1",
+	"plugins": [
+		{
+			"id": "kimi-code-lite-demo",
+			"displayName": "Kimi Code Lite Demo",
+			"description": "毕业项目演示 plugin。",
+			"source": "./plugins/demo"
+		}
+	]
+}

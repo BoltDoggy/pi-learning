@@ -1,0 +1,18 @@
+ autocomplete.ts              |  202 ++++++++++++++++++++++++++++++++++---------
+ components/editor.ts         |  156 +++++++++++++++++++++++++--------
+ components/loader.ts         |    2 
+ components/markdown.ts       |   40 ++++----
+ components/settings-list.ts  |    2 
+ components/text.ts           |    2 
+ components/truncated-text.ts |    2 
+ fuzzy.ts                     |    4 
+ keybindings.ts               |    2 
+ keys.ts                      |   13 +-
+ paste-burst.ts               |only
+ stdin-buffer.ts              |    2 
+ terminal-colors.ts           |    2 
+ terminal-image.ts            |   28 ++---
+ terminal.ts                  |    8 -
+ tui.ts                       |   88 ++++++++----------
+ utils.ts                     |   63 +++++++------
+ 17 files changed, 412 insertions(+), 204 deletions(-)
