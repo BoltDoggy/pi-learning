@@ -1,7 +1,8 @@
 // mini-pi/src/prompt/system-prompt.ts
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
-import { DEFAULT_TEMPLATE, type SystemPromptOptions } from "./types.ts";
+import { DEFAULT_TEMPLATE, CACHE_STABLE_TEMPLATE, type SystemPromptOptions } from "./types.ts";
+import { buildCacheStablePrefix } from "./cache-prefix.ts";
 
 export async function loadContextFiles(cwd: string): Promise<Array<{ path: string; content: string }>> {
 	const files: Array<{ path: string; content: string }> = [];
@@ -48,6 +49,26 @@ async function scanDir(dir: string): Promise<Array<{ path: string; content: stri
 }
 
 export function buildSystemPrompt(opts: SystemPromptOptions): string {
+	// 缓存稳定模式（lesson-31）：tools+skills 折叠到顶部 {{CACHE_PREFIX}}，字节稳定。
+	if (opts.cacheStable) {
+		const { prefix } = buildCacheStablePrefix(
+			(opts.tools ?? []).map((t) => ({ name: t.name, description: t.description })),
+			opts.skills ?? [],
+		);
+		const template = opts.template ?? CACHE_STABLE_TEMPLATE;
+		let contextSection = "";
+		if (opts.contextFiles && opts.contextFiles.length > 0) {
+			contextSection = opts.contextFiles.map((f) => `## ${f.path}\n${f.content}`).join("\n\n");
+		}
+		let prompt = template
+			.replace("{{CACHE_PREFIX}}", prefix)
+			.replace("{{PROJECT_CONTEXT}}", contextSection)
+			.replace("{{CWD}}", opts.cwd ?? process.cwd());
+		if (opts.appendSystem) prompt += "\n\n" + opts.appendSystem;
+		return prompt;
+	}
+
+	// 默认模式（lesson-18 行为，向后兼容）
 	const template = opts.template ?? DEFAULT_TEMPLATE;
 
 	let toolsSection = "";

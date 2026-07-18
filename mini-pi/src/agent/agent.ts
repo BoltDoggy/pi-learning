@@ -9,6 +9,7 @@ import type { ToolRegistry } from "../tools/registry.ts";
 import type { Session } from "../session/session.ts";
 import { buildMaybeCompact } from "../session/compact.ts";
 import type { ExtensionRunner } from "../extensions/runner.ts";
+import { UsageAccumulator, type TokenUsage } from "../llm/usage.ts";
 
 export interface AgentOptions {
 	client: ClientOptions;
@@ -40,6 +41,10 @@ export class Agent {
 	private _isStreaming = false;
 	private _errorMessage: string | undefined;
 	private activeAbort: AbortController | undefined;
+	/** 跨轮累加的 token 用量（lesson-32）。 */
+	private _usage = new UsageAccumulator();
+	/** 上一轮结束时累积的 totalTokens，用于算「本轮增量」喂给 goal tick。 */
+	private _usageAtTurnStart = 0;
 	/** 可选：只暴露这些工具给 LLM（plan mode 用）。null 表示全部。 */
 	private _activeToolNames: Set<string> | null = null;
 	/** 可选：上下文变换（plan mode 注入 [PLAN MODE] 前缀）。 */
@@ -141,6 +146,13 @@ export class Agent {
 	reset(): void {
 		this._messages = [];
 		this._errorMessage = undefined;
+		this._usage.reset();
+		this._usageAtTurnStart = 0;
+	}
+
+	/** 获取累计 token 用量（lesson-32）。 */
+	getUsage(): TokenUsage & { calls: number } {
+		return this._usage.summary();
 	}
 
 	/** 限制 LLM 可见的工具集合（plan mode 进入时设只读工具）。null 恢复全部。 */
@@ -162,6 +174,8 @@ export class Agent {
 		this._isStreaming = true;
 		this._errorMessage = undefined;
 		const goalStart = this._goalManager ? Date.now() : 0;
+		// 记录本轮开始时的累计 token，算「本轮增量」喂给 goal 预算
+		const usageBefore = this._usage.totalTokens;
 
 		// loop 内部每追加一条消息都会回调这里：
 		//  - 同步进内存
@@ -197,15 +211,17 @@ export class Agent {
 				permissionPrompt: this._permissionPrompt,
 				activeToolNames: this._activeToolNames ? [...this._activeToolNames] : null,
 				transform: this._contextTransform ?? undefined,
+				onUsage: (u) => this._usage.add(u),
 			});
 		} catch (e) {
 			this._errorMessage = (e as Error).message;
 		} finally {
 			this._isStreaming = false;
 			this.activeAbort = undefined;
-			// goal 预算 tick：本次 prompt 计 1 turn + 实际耗时（简化：不做 token 估算）
+			// goal 预算 tick（lesson-32）：本轮真实 token 增量 + 1 turn + 实际耗时
 			if (this._goalManager) {
-				const over = this._goalManager.tick(1, 0, Date.now() - goalStart);
+				const tokenDelta = this._usage.totalTokens - usageBefore;
+				const over = this._goalManager.tick(1, tokenDelta, Date.now() - goalStart);
 				if (over) {
 					this._goalManager.setStatus("blocked", "预算耗尽");
 				}

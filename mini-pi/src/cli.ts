@@ -19,6 +19,7 @@ import { buildSystemPrompt, loadContextFiles } from "./prompt/system-prompt.ts";
 import { loadSkills } from "./prompt/skills.ts";
 import { ExtensionRunner, loadExtension, loadFactories } from "./extensions/runner.ts";
 import { makePermissionExtension } from "./extensions/permission-rules.ts";
+import { makeWorkspaceGuardExtension } from "./extensions/workspace-guard.ts";
 import { registerPlanMode, isPlanActive } from "./extensions/plan-mode.ts";
 import { Session } from "./session/session.ts";
 import type { ClientOptions } from "./llm/openai.ts";
@@ -75,9 +76,13 @@ async function main() {
 	const goalManager = new GoalManager();
 	for (const t of makeGoalTools(goalManager)) registry.register(t);
 
-	// 主扩展 runner：聚合内置 permission + 外部扩展的 tools / commands / handlers
+	// 主扩展 runner：聚合内置 permission + 工作区写根约束 + 外部扩展
 	const extRunner = new ExtensionRunner(cwd);
-	await loadFactories(extRunner, [makePermissionExtension()]); // 三态规则引擎
+	await loadFactories(extRunner, [
+		makePermissionExtension(), // 三态规则引擎（lesson-29）
+		makeWorkspaceGuardExtension({ workspaceRoots: [cwd] }), // 路径维度护栏（lesson-33）
+	]);
+	console.log(`[guard] 工作区写根: ${cwd}`);
 	const extensions = process.env.MINI_PI_EXTENSIONS?.split(",") ?? [];
 	for (const ext of extensions) {
 		try {
@@ -107,6 +112,7 @@ async function main() {
 		skills,
 		contextFiles,
 		cwd,
+		cacheStable: true,
 	});
 
 	const contextWindow = Number(process.env.OPENAI_CONTEXT_WINDOW ?? 128000);
@@ -187,7 +193,7 @@ async function main() {
 	console.log(`skills: ${skills.map((s) => s.name).join(", ") || "(none)"}`);
 	const extCmds = extRunner.getCommands();
 	if (extCmds.length > 0) console.log(`ext commands: ${extCmds.map((c) => "/" + c.name).join(", ")}`);
-	console.log("命令: /quit /reset /save <path> /fork <path> /goal /help\n");
+	console.log("命令: /quit /reset /save <path> /fork <path> /goal /usage /help\n");
 
 	while (true) {
 		let input: string;
@@ -208,6 +214,13 @@ async function main() {
 		}
 		if (trimmed === "/goal") {
 			console.log(goalManager.summary() + "\n");
+			continue;
+		}
+		if (trimmed === "/usage") {
+			const u = agent.getUsage();
+			console.log(
+				`token 用量：prompt=${u.promptTokens} completion=${u.completionTokens} total=${u.totalTokens} (${u.calls} 次调用)\n`,
+			);
 			continue;
 		}
 		if (trimmed.startsWith("/save") || trimmed.startsWith("/fork")) {
@@ -251,6 +264,7 @@ async function main() {
 			console.log("  /save <path>    快照当前 session 到新文件");
 			console.log("  /fork <path>    同 /save（从快照点另起分支）");
 			console.log("  /goal           查看当前 goal 状态");
+			console.log("  /usage          查看累计 token 用量");
 			for (const c of extCmds) {
 				console.log(`  /${c.name}${" ".repeat(Math.max(1, 14 - c.name.length - 1))}${c.description}`);
 			}

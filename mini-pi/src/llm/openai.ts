@@ -108,6 +108,12 @@ export async function* stream(opts: ClientOptions, ctx: Context): AsyncGenerator
 					};
 					finish_reason?: string | null;
 				}[];
+				// DeepSeek/OpenAI 流式响应在最后一帧带 usage（stream_options.include_usage 或默认）
+				usage?: {
+					prompt_tokens?: number;
+					completion_tokens?: number;
+					total_tokens?: number;
+				};
 			};
 			const choice = chunk.choices[0];
 			if (!choice) continue;
@@ -142,6 +148,19 @@ export async function* stream(opts: ClientOptions, ctx: Context): AsyncGenerator
 			}
 			if (choice.finish_reason) {
 				builder.setFinish(choice.finish_reason);
+			}
+
+			// 捕获 usage（lesson-32）：DeepSeek/OpenAI 流式响应在最后一帧带 usage 字段。
+			// 必须在 for await 循环内（chunk 在此作用域）。
+			if (chunk.usage) {
+				yield {
+					type: "usage",
+					usage: {
+						promptTokens: chunk.usage.prompt_tokens ?? 0,
+						completionTokens: chunk.usage.completion_tokens ?? 0,
+						totalTokens: chunk.usage.total_tokens ?? 0,
+					},
+				};
 			}
 		}
 

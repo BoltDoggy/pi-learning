@@ -38,6 +38,11 @@ export interface AgentLoopConfig {
 	/** 可选：覆盖默认的上下文变换（plan mode 注入模式标记用）。 */
 	transform?: (messages: AgentMessage[]) => AgentMessage[];
 	/**
+	 * 可选：每轮 LLM 调用返回 usage 时触发（lesson-32）。
+	 * 用于跨轮累加 token 用量，驱动预算守卫。
+	 */
+	onUsage?: (usage: import("../llm/usage.ts").TokenUsage) => void;
+	/**
 	 * 可选：每轮结束后调用。若返回 { rebuilt }，表示发生了 compaction，
 	 * loop 用 rebuilt 替换内存消息数组（不再触发 onMessage，避免重复落盘）。
 	 */
@@ -131,6 +136,10 @@ export async function runAgentLoop(prompt: AgentMessage, config: AgentLoopConfig
 			const ctx = buildContext();
 			let assistant: AssistantMessage | undefined;
 			for await (const e of stream(client, ctx)) {
+				if (e.type === "usage") {
+					config.onUsage?.(e.usage);
+					continue;
+				}
 				await emitter.emit({ type: "llm_event", event: e });
 				if (e.type === "done") assistant = e.message;
 				if (e.type === "error") {

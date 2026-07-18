@@ -1,6 +1,7 @@
 // mini-pi/src/llm/events.ts
 // 流式事件抽象 + 重建消息
 import type { AssistantMessage, TextContent, ToolCall } from "./types.ts";
+import type { TokenUsage } from "./usage.ts";
 
 /** 流式事件 —— 消费侧看到的协议 */
 export type StreamEvent =
@@ -9,6 +10,7 @@ export type StreamEvent =
 	| { type: "toolcall_start"; index: number; id: string; name: string; partial: AssistantMessage }
 	| { type: "toolcall_delta"; index: number; delta: string; partial: AssistantMessage }
 	| { type: "toolcall_end"; index: number; toolCall: ToolCall; partial: AssistantMessage }
+	| { type: "usage"; usage: TokenUsage }
 	| { type: "done"; message: AssistantMessage }
 	| { type: "error"; error: Error };
 

@@ -1,6 +1,6 @@
-# 从 0 实现 Pi Agent Harness（30 节实战）
+# 从 0 实现 Pi Agent Harness（33 节实战）
 
-> 在这门课里，我们**不依赖 pi 的任何包**，用原生 TypeScript + `fetch` 从第一行代码造一个能用的 mini agent harness，借鉴 pi 的架构但全部自己实现。最终产物 `mini-pi/` 是一个能跑的 coding agent CLI。lesson-22~26 进阶篇对照 kimi-code 与 pi 的差异，补齐持久化、权限、计划模式等产品级能力；lesson-27~30 进阶 II 补齐并发安全、context 工程和 goal 自主性。
+> 在这门课里，我们**不依赖 pi 的任何包**，用原生 TypeScript + `fetch` 从第一行代码造一个能用的 mini agent harness，借鉴 pi 的架构但全部自己实现。最终产物 `mini-pi/` 是一个能跑的 coding agent CLI。lesson-22~26 进阶篇对照 kimi-code 与 pi 的差异，补齐持久化、权限、计划模式等产品级能力；lesson-27~30 进阶 II 补齐并发安全、context 工程和 goal 自主性；lesson-31~33 进阶 III 对照 Reasonix（DeepSeek 原生 Go agent），补齐 prefix-cache 稳定、成本可控、安全可控。
 
 ## 这门课和上一门的区别
 
@@ -78,6 +78,15 @@ mini-pi/
 | `prompt/skills.ts` | `packages/agent/src/harness/skills.ts` | 同概念 |
 | `extensions/loader.ts` | `packages/coding-agent/src/core/extensions/loader.ts` | 简化版（不用 jiti） |
 
+### 阶段 9 对照 Reasonix（DeepSeek 原生 Go agent）
+
+| mini-pi 文件 | Reasonix 对应 | 关系 |
+|---|---|---|
+| `prompt/cache-prefix.ts` | `internal/agent/`（cache-first prefix，`REASONIX.md:14-16`） | 简化版（hash 校验前缀稳定） |
+| `agent/convert.ts`（`snipToolResults`） | `reasonix.example.toml:37` `tool_result_snip_ratio=0.6` | 概念同（snip 历史 tool 结果保前缀缓存） |
+| `llm/usage.ts` | provider `prices`/`usage` 字段（`reasonix.example.toml:67,104`） | 简化版（只计 token，不算钱） |
+| `extensions/workspace-guard.ts` | `internal/sandbox/` + `internal/permission/` | 护栏 vs OS 级强制（根本差异） |
+
 ## 准备工作
 
 ```bash
@@ -99,7 +108,7 @@ cd mini-pi
 - **与 pi 对照** 哪些源码文件
 - **自检** 问题
 
-## 30 节大纲
+## 33 节大纲
 
 ### 阶段 1：LLM 调用层（手写 fetch + SSE）—— 第 1-4 节
 | # | 主题 | 产出 |
@@ -171,6 +180,15 @@ cd mini-pi
 | 29 | [Permission prompt 三态](./lesson-29.md) | `permission-rules.ts`（allow/prompt/deny + readline 确认） | 升级 L24 的二态 |
 | 30 | [Goal 模式](./lesson-30.md) | `goal/`（GoalManager + 4 工具 + 预算追踪） | 新模块 |
 
+### 阶段 9（进阶 III）：生产级能力 —— 对照 Reasonix —— 第 31-33 节 ★
+> 对照 [Reasonix](https://github.com/esengine/DeepSeek-Reasonix)（DeepSeek 原生 Go coding agent），补齐 prefix-cache 稳定、成本可控、安全可控。三节独立可挑读。
+
+| # | 主题 | 产出 | 激活/新增 |
+|---|------|------|-----------|
+| 31 | [prefix-cache 稳定](./lesson-31.md) | `prompt/cache-prefix.ts` + tool result snip | 新模块 |
+| 32 | [成本可控：token 用量 + 预算](./lesson-32.md) | `llm/usage.ts` + `/usage` 命令 | 新模块 |
+| 33 | [安全可控：工作区写根约束](./lesson-33.md) | `extensions/workspace-guard.ts` | 新模块 |
+
 ## 节奏建议
 
 - 阶段 1-3 是主轴（LLM + tool + loop），**必须按顺序**，是 harness 的心脏
@@ -178,6 +196,7 @@ cd mini-pi
 - 阶段 5-6 是「从 demo 到产品」的关键
 - 阶段 7（进阶）把前 21 节预留的死代码全部接通，并对照 kimi-code 补齐 permission / ask_user / todo / plan-mode。建议在跑通 lesson-21 后连着做，因为它们互相依赖（23 依赖 22，26 依赖 24/25）
 - 阶段 8（进阶 II）补齐并发安全（L27 mutation queue）、context 工程（L28 skill 触发）、权限精细化（L29 prompt 三态）、自主性（L30 goal）。互相独立，可挑感兴趣的读
+- 阶段 9（进阶 III）对照 Reasonix（DeepSeek 原生 Go agent），三节独立可挑读：L31 是 DeepSeek prefix cache 命中率的关键（缓存友好 prompt 结构 + tool result snip）；L32 让 goal 预算从 turns-only 升级到真实 token（stream usage 追踪 + `/usage` 命令）；L33 补齐路径维度安全护栏（工作区写根约束，⚠️ 是护栏非沙箱）
 - 每节 1-2 小时，阶段 3 的核心课可能更久（值得）
 
 ## 约定
