@@ -1,0 +1,23 @@
+{
+	"name": "mini-pi",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"description": "A mini agent harness built from scratch — course project",
+	"bin": {
+		"mini-pi": "dist/cli.js"
+	},
+	"scripts": {
+		"start": "tsx src/cli.ts",
+		"check": "tsc --noEmit",
+		"build": "tsc"
+	},
+	"devDependencies": {
+		"tsx": "^4.22.1",
+		"typescript": "^5.9.3",
+		"@types/node": "^22.19.0"
+	},
+	"engines": {
+		"node": ">=22.0.0"
+	}
+}
