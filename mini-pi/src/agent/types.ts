@@ -11,4 +11,5 @@ export type AgentEvent =
 	| { type: "llm_event"; event: import("../llm/events.ts").StreamEvent }
 	| { type: "tool_start"; toolCall: import("../llm/types.ts").ToolCall }
 	| { type: "tool_end"; toolCall: import("../llm/types.ts").ToolCall; isError: boolean; content: import("../llm/types.ts").TextContent[] }
+	| { type: "compact_done"; summary: string; tokensBefore: number; tokensAfter: number }
 	| { type: "error"; error: Error };

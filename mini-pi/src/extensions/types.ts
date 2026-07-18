@@ -8,7 +8,13 @@ export interface ExtensionCommand {
 	handler: (args: string) => Promise<void> | void;
 }
 
-type EventHandler = (event: AgentEvent) => void | Promise<void> | { block?: boolean };
+/** 扩展钩子返回值：可放行 / 拦截 / 要求 prompt 用户。 */
+export type PermissionHandlerResult =
+	| { allow?: boolean }
+	| { block?: boolean; reason?: string }
+	| { prompt?: boolean; message?: string };
+
+type EventHandler = (event: AgentEvent) => void | Promise<void> | PermissionHandlerResult;
 
 export interface ExtensionAPI {
 	readonly cwd: string;

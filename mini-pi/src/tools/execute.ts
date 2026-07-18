@@ -1,6 +1,7 @@
 // mini-pi/src/tools/execute.ts
 import type { ToolCall, ToolMessage } from "../llm/types.ts";
 import type { ToolRegistry } from "./registry.ts";
+import { isFileMutation, globalMutationQueue } from "./mutation-queue.ts";
 
 /** 执行单个 ToolCall（旧版，保留给简单场景） */
 export async function executeToolCall(
@@ -86,7 +87,11 @@ async function abortableExecute(
 	}
 
 	try {
-		const result = await tool.execute(call.arguments, ctrl.signal, cwd);
+		// 文件写操作按 path 串行化，避免并发改同一文件互相覆盖
+		const runTool = () => tool.execute(call.arguments, ctrl.signal, cwd);
+		const result = isFileMutation(tool.name)
+			? await globalMutationQueue.run(String(call.arguments.path ?? "__unknown__"), runTool)
+			: await runTool();
 		return {
 			role: "tool",
 			toolCallId: call.id,

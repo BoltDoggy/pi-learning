@@ -1,6 +1,6 @@
-# 从 0 实现 Pi Agent Harness（21 节实战）
+# 从 0 实现 Pi Agent Harness（30 节实战）
 
-> 在这门课里，我们**不依赖 pi 的任何包**，用原生 TypeScript + `fetch` 从第一行代码造一个能用的 mini agent harness，借鉴 pi 的架构但全部自己实现。最终产物 `mini-pi/` 是一个能跑的 coding agent CLI。
+> 在这门课里，我们**不依赖 pi 的任何包**，用原生 TypeScript + `fetch` 从第一行代码造一个能用的 mini agent harness，借鉴 pi 的架构但全部自己实现。最终产物 `mini-pi/` 是一个能跑的 coding agent CLI。lesson-22~26 进阶篇对照 kimi-code 与 pi 的差异，补齐持久化、权限、计划模式等产品级能力；lesson-27~30 进阶 II 补齐并发安全、context 工程和 goal 自主性。
 
 ## 这门课和上一门的区别
 
@@ -99,7 +99,7 @@ cd mini-pi
 - **与 pi 对照** 哪些源码文件
 - **自检** 问题
 
-## 21 节大纲
+## 30 节大纲
 
 ### 阶段 1：LLM 调用层（手写 fetch + SSE）—— 第 1-4 节
 | # | 主题 | 产出 |
@@ -150,11 +150,34 @@ cd mini-pi
 |---|------|------|
 | 21 | [CLI 入口 + 交互式 REPL](./lesson-21.md) | `cli.ts`，mini-pi 能用了！ |
 
+### 阶段 7（进阶）：从 demo 到产品 —— 第 22-26 节 ★
+> 对照 kimi-code 与 pi 的差异，把前面预留的「死代码」接通，补齐生产级能力。每节都先讲 pi/kimi-code 怎么做，再在 mini-pi 落地。
+
+| # | 主题 | 产出 | 激活/新增 |
+|---|------|------|-----------|
+| 22 | [Session 持久化接线](./lesson-22.md) | `onMessage` 钩子 + `--resume` + `/fork` | 激活 session 死代码 |
+| 23 | [自动 Compaction 触发](./lesson-23.md) | `maybeCompact` 钩子 + `compact_done` 事件 | 激活 compact 死代码 |
+| 24 | [Permission 规则引擎 + ask_user](./lesson-24.md) | `permission.ts` + `ask-user.ts` | 激活扩展钩子 + 新工具 |
+| 25 | [TodoList 工具](./lesson-25.md) | `todo.ts`（状态存 tool result） | 新工具 |
+| 26 | [Plan Mode（结业综合项目）](./lesson-26.md) | `plan-mode.ts`（activeTools + transform + 拦截） | 综合应用 22-25 |
+
+### 阶段 8（进阶 II）：工具工程化 + 自主性 —— 第 27-30 节 ★
+> 继续对照 kimi-code 与 pi，补齐并发安全、context 工程和 goal 自主性。
+
+| # | 主题 | 产出 | 激活/新增 |
+|---|------|------|-----------|
+| 27 | [文件 mutation queue](./lesson-27.md) | `mutation-queue.ts`（per-path 串行化并发写） | 新模块 |
+| 28 | [Skill 触发展开](./lesson-28.md) | `skill-trigger.ts`（用户消息匹配 → body 注入） | 激活 expandSkill 死代码 |
+| 29 | [Permission prompt 三态](./lesson-29.md) | `permission-rules.ts`（allow/prompt/deny + readline 确认） | 升级 L24 的二态 |
+| 30 | [Goal 模式](./lesson-30.md) | `goal/`（GoalManager + 4 工具 + 预算追踪） | 新模块 |
+
 ## 节奏建议
 
 - 阶段 1-3 是主轴（LLM + tool + loop），**必须按顺序**，是 harness 的心脏
 - 阶段 4（工具）可以挑感兴趣的读
 - 阶段 5-6 是「从 demo 到产品」的关键
+- 阶段 7（进阶）把前 21 节预留的死代码全部接通，并对照 kimi-code 补齐 permission / ask_user / todo / plan-mode。建议在跑通 lesson-21 后连着做，因为它们互相依赖（23 依赖 22，26 依赖 24/25）
+- 阶段 8（进阶 II）补齐并发安全（L27 mutation queue）、context 工程（L28 skill 触发）、权限精细化（L29 prompt 三态）、自主性（L30 goal）。互相独立，可挑感兴趣的读
 - 每节 1-2 小时，阶段 3 的核心课可能更久（值得）
 
 ## 约定
