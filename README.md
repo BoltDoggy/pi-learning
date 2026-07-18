@@ -20,7 +20,7 @@
 | 课程 | 定位 | 依赖 | 节数 |
 |------|------|------|------|
 | [`docs/course/`](./docs/course) | **读 Pi 源码**：逐模块拆解 harness 实现，每节带「知识准备（精确到文件:行号）+ 代码实战 + 自检」。多数课不需要 API key。 | `@earendil-works/*` 包 | 18 基础 + 7 进阶（对照 Kimi Code） |
-| [`docs/course-build/`](./docs/course-build) | **从 0 实现 mini-pi**：不依赖 Pi 的任何包，用原生 TypeScript + `fetch` 从第一行代码造一个能用的 agent。 | 零运行时依赖（仅 `fetch` + Node 内置） | 30 节（21 基础 + 9 进阶） |
+| [`docs/course-build/`](./docs/course-build) | **从 0 实现 mini-pi**：不依赖 Pi 的任何包，用原生 TypeScript + `fetch` 从第一行代码造一个能用的 agent。 | 零运行时依赖（仅 `fetch` + Node 内置） | 30 节（21 基础 + 9 进阶） + 2 个未合并的实验性分支（见下） |
 
 两门课程都用中文撰写。
 
@@ -100,6 +100,22 @@ pnpm dev:cli                            # 开发模式跑 CLI
 | 亲手从零造一个 agent | [`docs/course-build/`](./docs/course-build)（产出 `mini-pi/`） |
 | 理解 Kimi Code 的产品架构 | [`kimi-code/AGENTS.md`](./kimi-code/AGENTS.md) + [`kimi-code/README.md`](./kimi-code/README.md) |
 | 跨项目对比（Pi vs Kimi Code） | [`docs/course/`](./docs/course) 的进阶篇（lesson-19 起） |
+
+## 实验性分支（未合并到 main）
+
+`docs/course-build/` 的 30 节是稳定主线。仓库里还有两个**互相独立、尚未合并**的实验性分支，各自把课程往不同方向延伸，并且都新增「阶段 9」、都从 lesson-31 开始——**编号直接冲突，无法并存**，所以暂不合并，择一推进时需先 rebase。
+
+| 分支 | 方向 | 新增课程 | mini-pi 产物 | 对照对象 |
+|------|------|----------|-------------|----------|
+| [`vs-reasonix`](./tree/vs-reasonix) | 对照 [Reasonix](https://github.com/esengine/DeepSeek-Reasonix)（DeepSeek 原生 Go agent）补齐生产级能力 | L31 prefix-cache 稳定（缓存友好 prompt + tool result snip）<br>L32 成本可控（token 用量追踪 + `/usage` + goal 预算）<br>L33 安全可控（工作区写根约束，⚠️ 护栏非沙箱） | `prompt/cache-prefix.ts`、`llm/usage.ts`、`extensions/workspace-guard.ts` | Reasonix `internal/sandbox` + `internal/permission`、`reasonix.example.toml` |
+| [`multi-user-cloud`](./tree/multi-user-cloud) | 把 mini-pi 从本地 CLI 改造成**多用户云 agent 服务**（尽量零依赖：JWT/WebSocket 手写，仅 Redis 客户端破例） | L31 HTTP server · L32 SSE 流式 · L33 Session REST · L34 用户 + JWT · L35 per-user 隔离 · L36 WebSocket · L37 Redis pub/sub · L38 Dockerfile + 部署 | 新增 `server/` 层（`app`/`session-store`/`user-store`/`jwt`/`auth`/`ws`/`broadcaster`/`redis-broadcaster`）+ `Dockerfile` + `docker-compose.yml` + `nginx.conf` | kimi-code `kap-server` |
+
+改动范围对比：
+
+- **`vs-reasonix`** 只改 `docs/course-build/README.md`，新增 3 节课程与对应 mini-pi 源码；**未触碰**顶层 `README.md` / `AGENTS.md`。
+- **`multi-user-cloud`** 改动更大：除课程外，还更新了 [`AGENTS.md`](./AGENTS.md)（mini-pi 架构概览、新增环境变量 `MINI_PI_PORT` / `MINI_PI_HOST` / `MINI_PI_DATA_DIR` / `REDIS_URL`、命令速查加了 `mini-pi-server`）；顶层 `README.md` 同样未动。
+
+> ⚠️ 两者在 lesson-31~33 与「阶段 9」名称上直接冲突。若想同时保留，需要先重排其中一个的编号（如把云化的 L31~38 改成独立编号段）。
 
 ## 更多文档
 
